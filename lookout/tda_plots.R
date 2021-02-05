@@ -7,7 +7,6 @@ library(ggplot2)
 library(ggtda)
 library(gridExtra)
 library(TDAstats)
-# library(cowplot)
 # ---------------------------------------------------------------------
 # TASK 1 - EXAMPLE 1
 # ---------------------------------------------------------------------
