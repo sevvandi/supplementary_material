@@ -108,10 +108,10 @@ g1 <- ggplot(dfalgo1, aes(Algorithm)) + geom_bar(width=0.5) + xlab("Best Perform
 g1
 table(dfalgo1[ ,2])
 
-# table(dfalgo1[ ,2])
+# > table(dfalgo1[ ,2])
 #
 # Average     Greedy Greedy-Avg       ICWA        IRT        Max     Thresh
-# 14         10         17         11         34         18         15
+# 11         12         15         14         46         14          7
 
 # T2 -----------------------------
 dat <- read.csv("anomalyensembles/EX_T2.csv")
@@ -130,8 +130,11 @@ colnames(dfalgo1) <- c('Experiment', 'Algorithm')
 g2 <- ggplot(dfalgo1, aes(Algorithm)) + geom_bar(width=0.5) + xlab(("Best Performing Ensemble - T2")) + ylab("Dataset Sources") + theme_bw() + theme(axis.text.x = element_text(angle = 60, hjust=1))
 g2
 table(dfalgo1[ ,2])
+# > table(dfalgo1[ ,2])
+#
 # Average     Greedy Greedy-Avg       ICWA        IRT        Max     Thresh
-# 12         10         15          9         42         12          6
+# 15          3         16         18         44          9          2
+
 
 
 myplot1 <- gridExtra::arrangeGrob(g1, bottom = textGrob("(a)", x = unit(0.5, "npc"), y   = unit(0.5, "npc"), just=c("left","bottom"),gp=gpar(col="black")))
@@ -183,6 +186,7 @@ max_perf3$roundedpval <- round(max_perf3$p_value, 3)
 dim(max_perf3)
 table(max_perf3$best_algo)
 max_perf3
+max_perf3[ ,c(1:3, 5)]
 
 # T2 ----------------------------
 dat <- read.csv("anomalyensembles/EX_T2.csv")
@@ -251,8 +255,10 @@ for(ii in 1:len){
 stars <- ifelse(max_perf$p_value < 0.05, ifelse(max_perf$p_value < 0.01, 2, 1), 0)
 max_perf2 <- cbind.data.frame(unique(sources), max_perf, stars)
 
+
 max_perf3 <- max_perf2[which(stars >0 ), ]
 max_perf3$roundedpval <- round(max_perf3$p_value, 3)
+max_perf3$best_algo <- c("IRT", "Average", "Greedy", "Greedy-Avg", "ICWA", "Max", "Thresh")[max_perf3$best_algo]
 dim(max_perf3)
 table(max_perf3$best_algo)
 max_perf3

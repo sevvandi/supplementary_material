@@ -4,8 +4,9 @@
 # TASK 2  : EXPERIMENT 1 - TWO NORMAL DISTRIBUTIONS, ONE MOVING AWAY BIT BY BIT
 # TASK 3  : EXPERIMENT 2 - ANNULUS - ONE DISTRIBUTION MOVING IN
 # TASK 4  : EXPERIMENT 3 - 3 NORMAL DISTRIBUTIONS - BIMODAL -  WITH ONE MOVING INTO THE TROUGH
+# TASK 5  : EXPERIMENT 4 - EXPLORE TIME COMPLEXITY
 # ---------------------------------------------------------------------------
-
+source("ML_AD_Methods.R")
 
 # ---------------------------------------------------------------------------
 # TASK 1 : ANNULUS WITH OUTLIERS IN THE MIDDLE
@@ -13,6 +14,13 @@
 library(outlierensembles)
 library(ggplot2)
 library(tidyr)
+library(pROC)
+library(gridExtra)
+library(grid)
+library(e1071)
+library(h2o)
+library(stray)
+library(here)
 
 set.seed(1)
 r1 <-runif(803)
@@ -46,11 +54,25 @@ y4 <- DDoutlier::INFLO(X, k=10)
 y5 <- DDoutlier::KDEOS(X, k_min=10, k_max=20)
 y6 <- DDoutlier::LDF(X, k=10)
 y7 <- DDoutlier::LDOF(X, k=10)
-Y <- cbind.data.frame(y1, y2, y3, y4, y5, y6$LDF, y7)
+
+# stray
+y8 <- stray::find_HDoutliers(X)
+
+# autoencoder scores
+autoencsc <- autoencoder_AD2(X)
+
+# SVM scores
+svmsc <- svm_AD(X)
+svmsc <- as.vector(svmsc)
+
+# isolation forest scores
+isosc <- isolation_AD(X)
+
+Y <- cbind.data.frame(y1, y2, y3, y4, y5, y6$LDF, y7, y8$out_scores,  autoencsc, svmsc, isosc)
 ens1 <- outlierensembles::irt_ensemble(Y)
 df <- cbind.data.frame(X, ens1$scores)
 colnames(df)[3] <- "IRT"
-#ggplot(df, aes(x1, x2)) + geom_point(aes(color=IRT))  +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=IRT))  +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,1] <- ens1$scores
 
 # greedy 1
@@ -64,7 +86,7 @@ ensemblescores[ ,2] <- ens2$scores
 ens21 <- outlierensembles::greedy_ensemble(Y, kk=10)
 df <- cbind.data.frame(X, ens21$scores)
 colnames(df)[3] <- "Greedy"
-# ggplot(df, aes(x1, x2)) + geom_point(aes(color=Greedy)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=Greedy)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,8] <- ens21$scores
 
 
@@ -77,7 +99,7 @@ for(ll in 1:10){
 meanscores <- apply(scores, 1, mean)
 df <- cbind.data.frame(X, meanscores)
 colnames(df)[3] <- "GreedyAvg"
-#ggplot(df, aes(x1, x2)) + geom_point(aes(color=GreedyAvg)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=GreedyAvg)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,3] <- meanscores
 
 
@@ -85,7 +107,7 @@ ensemblescores[ ,3] <- meanscores
 ens3 <- outlierensembles::icwa_ensemble(Y)
 df <- cbind.data.frame(X, ens3)
 colnames(df)[3] <- "ICWA"
-#ggplot(df, aes(x1, x2)) + geom_point(aes(color=ICWA)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=ICWA)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,4] <- ens3
 
 
@@ -93,7 +115,7 @@ ensemblescores[ ,4] <- ens3
 ens4 <- outlierensembles::max_ensemble(Y)
 df <- cbind.data.frame(X, ens4)
 colnames(df)[3] <- "Max"
-# ggplot(df, aes(x1, x2)) + geom_point(aes(color=Max)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=Max)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,5] <- ens4
 
 
@@ -101,7 +123,7 @@ ensemblescores[ ,5] <- ens4
 ens5 <- outlierensembles::threshold_ensemble(Y)
 df <- cbind.data.frame(X, ens5)
 colnames(df)[3] <- "Threshold"
-#ggplot(df, aes(x1, x2)) + geom_point(aes(color=Threshold)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=Threshold)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,6] <- ens5
 
 
@@ -109,7 +131,7 @@ ensemblescores[ ,6] <- ens5
 ens6 <- outlierensembles::average_ensemble(Y)
 df <- cbind.data.frame(X, ens6)
 colnames(df)[3] <- "Average"
-#ggplot(df, aes(x1, x2)) + geom_point(aes(color=Average)) +  scale_color_gradient(low="yellow", high="red")
+ggplot(df, aes(x1, x2)) + geom_point(aes(color=Average)) +  scale_color_gradient(low="yellow", high="red")
 ensemblescores[ ,7] <- ens6
 
 
@@ -141,7 +163,7 @@ Y2[ind, ]
 
 
 
-round(ens1$model$param, 1)
+full_mat <- round(ens1$model$param, 1)
 
 
 # -------------------------------------------------------------------------
@@ -153,15 +175,18 @@ library(tidyr)
 library(outlierensembles)
 library(gridExtra)
 library(grid)
+library(e1071)
+library(h2o)
 
 values <- rep(0, 10)
 pp <- 10
 
+autoenc_all <- iso_all <- svm_all <- matrix(0, nrow=pp, ncol=10)
 
 thres_ens <- icwa_ens <- max_ens <- gr_ens_mean <- gr_ens <- averages <- irt_ensemble <-  matrix(0, nrow=pp, ncol=10)
 labs <- c(rep(0,400), rep(1,5))
 set.seed(123)
-for(kk in 1:pp){
+for(kk in 1:pp){ # pp
   x2 <- rnorm(405)
   x3 <- rnorm(405)
   x4 <- rnorm(405)
@@ -185,7 +210,20 @@ for(kk in 1:pp){
     ldfsc <- DDoutlier::LDF(X)$LDF
     ldofsc <- DDoutlier::LDOF(X)
 
-    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc)
+    # STRAY
+    str <- stray::find_HDoutliers(X)
+
+    # autoencoder scores
+    autoencsc <- autoencoder_AD2(X)
+
+    # SVM scores
+    svmsc <- svm_AD(X)
+    svmsc <- as.vector(svmsc)
+
+    # isolation forest scores
+    isosc <- isolation_AD(X)
+
+    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc, str$out_scores, autoencsc, svmsc, isosc)
 
     maxs <- apply(Y, 2, max)
     mins <- apply(Y, 2, min)
@@ -238,10 +276,29 @@ for(kk in 1:pp){
     thres_score <- outlierensembles::threshold_ensemble(Y)
     roc_obj <- pROC::roc(labs, thres_score, direction = "<")
     thres_ens[kk, i] <- roc_obj$auc
+
+    # ----- STORE ISOLATION FOREST, AUTOENCODERS AND SVM OUTPUT
+    # AUTOENCODER
+    roc_obj <- pROC::roc(labs, autoencsc, direction = "<")
+    autoenc_all[kk, i] <- roc_obj$auc
+
+    # SVM
+    roc_obj <- pROC::roc(labs, svmsc, direction = "<")
+    svm_all[kk, i] <- roc_obj$auc
+
+    # ISOLATION FOREST
+    roc_obj <- pROC::roc(labs, isosc, direction = "<")
+    iso_all[kk, i] <- roc_obj$auc
+
   }
 }
 
-round(modout$model$param, 1)
+colnames(full_mat) <- paste(colnames(full_mat), "_EX0", sep="")
+ex1mat <-  round(modout$model$param, 1)
+colnames(ex1mat) <- paste(colnames(ex1mat), "_EX1", sep="")
+irtparas <- cbind.data.frame(full_mat, ex1mat)
+rownames(irtparas) <- rownames(round(modout$model$param, 1))
+write.csv(irtparas, "Data_Output/IRT_Parameters.csv", row.names = FALSE)
 
 t.test(as.vector(irt_ensemble - averages))
 t.test(as.vector(irt_ensemble - gr_ens))
@@ -249,6 +306,10 @@ t.test(as.vector(irt_ensemble - gr_ens_mean))
 t.test(as.vector(irt_ensemble - icwa_ens))
 t.test(as.vector(irt_ensemble - max_ens))
 t.test(as.vector(irt_ensemble - thres_ens))
+
+t.test(as.vector(irt_ensemble - autoenc_all))
+t.test(as.vector(irt_ensemble - svm_all))
+t.test(as.vector(irt_ensemble - iso_all))
 
 irt_ensemble_mean <- apply(irt_ensemble, 2, mean)
 averages_mean <- apply(averages, 2, mean)
@@ -258,9 +319,12 @@ icwa_mean <- apply(icwa_ens, 2, mean)
 max_mean <- apply(max_ens, 2, mean)
 thres_mean <- apply(thres_ens, 2, mean)
 
+autoenc_mean <- apply(autoenc_all, 2, mean)
+svm_mean <- apply(svm_all, 2, mean)
+iso_mean <- apply(iso_all, 2, mean)
+
 df <- cbind.data.frame(1:10, irt_ensemble_mean, averages_mean, greedy_mean_several_k, greedy_mean_one_k, icwa_mean, max_mean, thres_mean)
 colnames(df) <- c("Iteration", "IRT", "Average", "Greedy_Avg", "Greedy", "ICWA", "Max", "Thresh")
-# write.csv(df, "Data_Output/Synthetic_Task_EX1.csv", row.names = FALSE)
 
 
 # PLOTTING ------------------------------------------------------
@@ -314,6 +378,8 @@ gridExtra::grid.arrange(myplot2, myplot1, myplot3, nrow=2, layout_matrix= rbind(
 values <- rep(0, 10)
 pp <- 10
 
+autoenc_all <- iso_all <- svm_all <- matrix(0, nrow=pp, ncol=10)
+
 thres_ens <- icwa_ens <- max_ens <- gr_ens_mean <- gr_ens <- averages <- irt_ensemble <-  matrix(0, nrow=pp, ncol=10)
 labs <- c(rep(0,800), rep(1,5))
 
@@ -352,7 +418,20 @@ for(kk in 1:pp){
     ldfsc <- DDoutlier::LDF(X)$LDF
     ldofsc <- DDoutlier::LDOF(X)
 
-    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc)
+    # STRAY
+    str <- stray::find_HDoutliers(X)
+
+    # autoencoder scores
+    autoencsc <- autoencoder_AD2(X)
+
+    # SVM scores
+    svmsc <- svm_AD(X)
+    svmsc <- as.vector(svmsc)
+
+    # isolation forest scores
+    isosc <- isolation_AD(X)
+
+    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc, str$out_scores, autoencsc, svmsc, isosc)
 
     maxs <- apply(Y, 2, max)
     mins <- apply(Y, 2, min)
@@ -403,10 +482,27 @@ for(kk in 1:pp){
     thres_score <- outlierensembles::threshold_ensemble(Y)
     roc_obj <- pROC::roc(labs, thres_score, direction = "<")
     thres_ens[kk, i] <- roc_obj$auc
+
+    # ----- STORE ISOLATION FOREST, AUTOENCODERS AND SVM OUTPUT
+    # AUTOENCODER
+    roc_obj <- pROC::roc(labs, autoencsc, direction = "<")
+    autoenc_all[kk, i] <- roc_obj$auc
+
+    # SVM
+    roc_obj <- pROC::roc(labs, svmsc, direction = "<")
+    svm_all[kk, i] <- roc_obj$auc
+
+    # ISOLATION FOREST
+    roc_obj <- pROC::roc(labs, isosc, direction = "<")
+    iso_all[kk, i] <- roc_obj$auc
+
   }
 }
 
-round(modout$model$param, 1)
+ex2_paras <- round(modout$model$param, 1)
+colnames(ex2_paras) <- paste(colnames(ex2_paras), "_EX2", sep="")
+irtparas <- cbind(irtparas, ex2_paras)
+write.csv(irtparas, "Data_Output/IRT_Parameters.csv", row.names = FALSE)
 
 t.test(as.vector(irt_ensemble - averages))
 t.test(as.vector(irt_ensemble - gr_ens))
@@ -414,6 +510,10 @@ t.test(as.vector(irt_ensemble - gr_ens_mean))
 t.test(as.vector(irt_ensemble - icwa_ens))
 t.test(as.vector(irt_ensemble - max_ens))
 t.test(as.vector(irt_ensemble - thres_ens))
+
+t.test(as.vector(irt_ensemble - autoenc_all))
+t.test(as.vector(irt_ensemble - svm_all))
+t.test(as.vector(irt_ensemble - iso_all))
 
 irt_ensemble_mean <- apply(irt_ensemble, 2, mean)
 averages_mean <- apply(averages, 2, mean)
@@ -423,10 +523,13 @@ icwa_mean <- apply(icwa_ens, 2, mean)
 max_mean <- apply(max_ens, 2, mean)
 thres_mean <- apply(thres_ens, 2, mean)
 
+autoenc_mean <- apply(autoenc_all, 2, mean)
+svm_mean <- apply(svm_all, 2, mean)
+iso_mean <- apply(iso_all, 2, mean)
 
 df <- cbind.data.frame(1:10, irt_ensemble_mean, averages_mean, greedy_mean_several_k, greedy_mean_one_k, icwa_mean, max_mean, thres_mean)
 colnames(df) <- c("Iteration", "IRT",  "Average", "Greedy_Avg", "Greedy", "ICWA", "Max", "Thresh")
-# write.csv(df, "Data_Output/Synthetic_Task_EX2.csv", row.names = FALSE)
+
 
 # PLOTTING --------------------------------------------
 colnum <- dim(df)[2]
@@ -478,7 +581,6 @@ myplot2 <- gridExtra::arrangeGrob(g2, bottom = textGrob("(b)", x = unit(0.4, "np
 myplot3 <- gridExtra::arrangeGrob(gperf, bottom = textGrob("(c)", x = unit(0.4, "npc"), y   = unit(0.5, "npc"), just=c("left","bottom"),gp=gpar(col="black")))
 
 
-# gridExtra::grid.arrange(g2, g1, gperf, nrow=2, layout_matrix= rbind(c(1,2), c(3,3)), widths=c(1,1.5))
 gridExtra::grid.arrange(myplot1, myplot2, myplot3, nrow=2, layout_matrix= rbind(c(1,2), c(3,3)), widths=c(1,1.3), heights=c(1,1.5))
 # 500 375 - dims
 
@@ -489,6 +591,7 @@ gridExtra::grid.arrange(myplot1, myplot2, myplot3, nrow=2, layout_matrix= rbind(
 
 pp <- 10
 
+autoenc_all <- iso_all <- svm_all <- matrix(0, nrow=pp, ncol=10)
 
 thres_ens <- icwa_ens <- max_ens <- gr_ens_mean <- gr_ens <- averages <- irt_ensemble <-  matrix(0, nrow=pp, ncol=10)
 
@@ -518,7 +621,20 @@ for(kk in 1:pp){
     ldfsc <- DDoutlier::LDF(X)$LDF
     ldofsc <- DDoutlier::LDOF(X)
 
-    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc)
+    # STRAY
+    str <- stray::find_HDoutliers(X)
+
+    # autoencoder scores
+    autoencsc <- autoencoder_AD2(X)
+
+    # SVM scores
+    svmsc <- svm_AD(X)
+    svmsc <- as.vector(svmsc)
+
+    # isolation forest scores
+    isosc <- isolation_AD(X)
+
+    Y <- cbind(knnsc, lofsc, cofsc, inflosc, kdeossc, ldfsc, ldofsc, str$out_scores, autoencsc, svmsc, isosc)
 
     maxs <- apply(Y, 2, max)
     mins <- apply(Y, 2, min)
@@ -571,10 +687,27 @@ for(kk in 1:pp){
     roc_obj <- pROC::roc(labs, thres_score, direction = "<")
     thres_ens[kk, i] <- roc_obj$auc
 
+    # ----- STORE ISOLATION FOREST, AUTOENCODERS AND SVM OUTPUT
+    # AUTOENCODER
+    roc_obj <- pROC::roc(labs, autoencsc, direction = "<")
+    autoenc_all[kk, i] <- roc_obj$auc
+
+    # SVM
+    roc_obj <- pROC::roc(labs, svmsc, direction = "<")
+    svm_all[kk, i] <- roc_obj$auc
+
+    # ISOLATION FOREST
+    roc_obj <- pROC::roc(labs, isosc, direction = "<")
+    iso_all[kk, i] <- roc_obj$auc
+
   }
 }
 
 round(modout$model$param, 1)
+ex3_paras <- round(modout$model$param, 1)
+colnames(ex3_paras) <- paste(colnames(ex3_paras), "_EX3", sep="")
+irtparas <- cbind(irtparas, ex3_paras)
+write.csv(irtparas, "Data_Output/IRT_Parameters.csv", row.names = FALSE)
 
 t.test(as.vector(irt_ensemble - averages))
 t.test(as.vector(irt_ensemble - gr_ens))
@@ -592,10 +725,9 @@ icwa_mean <- apply(icwa_ens, 2, mean)
 max_mean <- apply(max_ens, 2, mean)
 thres_mean <- apply(thres_ens, 2, mean)
 
-
 df <- cbind.data.frame(1:10, irt_ensemble_mean,  averages_mean, greedy_mean_several_k, greedy_mean_one_k, icwa_mean, max_mean, thres_mean)
 colnames(df) <- c("Iteration", "IRT", "Average", "Greedy_Avg", "Greedy", "ICWA", "Max", "Thresh")
-#write.csv(df, "Data_Output/Synthetic_Task_EX3.csv", row.names=FALSE)
+
 
 # PLOTTING ------------------------------------------
 colnum <- dim(df)[2]
@@ -640,7 +772,19 @@ myplot2 <- gridExtra::arrangeGrob(g2, bottom = textGrob("(b)", x = unit(0.39, "n
 myplot3 <- gridExtra::arrangeGrob(gperf, bottom = textGrob("(c)", x = unit(0.4, "npc"), y   = unit(0.5, "npc"), just=c("left","bottom"),gp=gpar(col="black")))
 
 
-# gridExtra::grid.arrange(g2, g1, gperf, nrow=2, layout_matrix= rbind(c(1,2), c(3,3)), widths=c(1,1.5))
 gridExtra::grid.arrange(myplot1, myplot2, myplot3, nrow=2, layout_matrix= rbind(c(1,2), c(3,3)), widths=c(1,1.3), heights=c(1,1.5))
 # 500 375 - dims
+
+
+# ---------------------------------------------------------------------------
+# TASK 5  : EXPERIMENT 4 - EXPLORE TIME COMPLEXITY
+# ---------------------------------------------------------------------------
+
+df2 <- read.csv(paste(here(), "/anomalyensembles/Time_Taken_for_Experiments.csv", sep=""))
+
+x <- df2$N*df2$iter*df2$n
+y <- df2$V1
+
+df3 <- cbind.data.frame(x, y)
+ggplot(df3, aes(x, y)) + geom_point() + geom_smooth(method="lm",formula=y~x,  se=FALSE) + xlab(TeX("$N\\times n\\times e$")) + ylab("Time taken (s)") + theme_bw()
 
