@@ -29,3 +29,6 @@ This file contains the autoencoder, isolation forest and SVM functions.
 
 10. Time_Taken_for_Experiments.csv
 This file contains the time taken for different synthetic experiments. 
+
+11. Collated_EX2.csv
+This file contains AUROC and AUPRC results for the datasets in the ODDS repository. 
