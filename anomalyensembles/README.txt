@@ -26,3 +26,6 @@ This file contains the code to reproduce results for the ODDS datasets.
 
 9. ML_AD_Methods.R
 This file contains the autoencoder, isolation forest and SVM functions.
+
+10. Time_Taken_for_Experiments.csv
+This file contains the time taken for different synthetic experiments. 
