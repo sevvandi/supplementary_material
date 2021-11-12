@@ -5,6 +5,8 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(gridExtra)
+library(here)
+
 folder <- paste(here(), "/anomalyensembles/ODDS_Individual/", sep="")
 files_list <- list.files(folder)
 
