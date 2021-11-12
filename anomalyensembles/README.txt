@@ -20,3 +20,9 @@ This csv file contains the results of the real data experiment T1.
 
 7. EX_T2.csv
 This csv file contains the results of the real data experiment T2.
+
+8. ODDS_Datasets.R
+This file contains the code to reproduce results for the ODDS datasets.
+
+9. ML_AD_Methods.R
+This file contains the autoencoder, isolation forest and SVM functions.
