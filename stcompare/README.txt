@@ -1,3 +1,5 @@
+AUTHOR: Spencer Wong
+
 Code and data used for the STCompare project.
 
 Several scripts need to be run first in order to download and generate the input data. Instructions are available in the specific subdirectories.
