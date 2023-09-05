@@ -1,0 +1,10 @@
+﻿Question,File,A,B,C,D,E,F,G
+1,Dye.127.1,Tensor,Linear_Multi,LDA,Interpolation,Averaging,SeamlessStiching,Original
+2,Brain.1838.1,LDA,Interpolation,Averaging,SeamlessStitching,Original,Tensor,Linear_Multi
+3,Polymer.23.1,Averaging,SeamlessStitching,Original,Tensor,LinearMulti,LDA,Interpolation
+4,Capacitor.35.1,Original,Tensor,LinearMulti,LDA,Interpolation,Averaging,SeamlessStitching
+,,,,,,,,
+5,Dye.127.2,Linear_Multi,LDA,Interpolation,Averaging,SeamlessStiching,Original,Tensor
+6,Brain.1838.2,Interpolation,Averaging,SeamlessStitching,Original,Tensor,LinearMulti,LDA
+7,Polymer.23.2,SeamlessStitching,Original,Tensor,LinearMulti,LDA,Interpolation,Averaging
+8,Capacitor.35.2,Tensor,LinearMulti,LDA,Interpolation,Averaging,SeamlessStitching,Original
